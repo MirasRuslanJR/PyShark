@@ -356,16 +356,32 @@
             </div>
         </main>
     </div>
+    <script>
+        let pyodideReady = null;
 
+async function initializePyodide() {
+    pyodideReady = await loadPyodide({
+        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/"
+    });
+    console.log("Pyodide готов!");
+}
+
+// Вызываем сразу при загрузке страницы
+initializePyodide();
+
+    </script>
+    <!-- Monaco Editor Configuration (prevents stackframe.js error) -->
+    <script>
+        window.MonacoEnvironment = {
+            getWorkerUrl: function(moduleId, label) {
+                return 'data:text/javascript;charset=utf-8,' + encodeURIComponent('self.MonacoEnvironment = {baseUrl: "https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/"};importScripts("https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/base/worker/workerMain.js");');
+            }
+        };
+    </script>
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
-    <script type="module">;
-
-const scene = new THREE.Scene();
-// остальной код
-</script>
     <!-- App Modules -->
     <script type="module" src="js/storage.js"></script>
     <script type="module" src="js/curriculum.js"></script>

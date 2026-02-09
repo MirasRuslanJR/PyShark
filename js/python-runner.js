@@ -28,6 +28,8 @@ export async function initializePyodide() {
 async function installPyBricksStub() {
     // Create PyBricks stub module
     const pybricksStub = `
+import sys
+from types import ModuleType
 import js
 import time as _time
 
@@ -215,33 +217,43 @@ class StopWatch:
             self._start_time = _time.time() - self._paused_time
             self._is_paused = False
 
-# Create package structure
-class HubsModule:
-    EV3Brick = EV3Brick
+# Create proper Python module structure for imports to work
+import sys
+from types import ModuleType
 
-class DevicesModule:
-    Motor = Motor
-    TouchSensor = TouchSensor
-    ColorSensor = ColorSensor
-    UltrasonicSensor = UltrasonicSensor
-    GyroSensor = GyroSensor
+# Create pybricks main module
+pybricks = ModuleType('pybricks')
+sys.modules['pybricks'] = pybricks
 
-class ParametersModule:
-    Port = Port
-    Color = Color
+# Create pybricks.hubs submodule
+pybricks_hubs = ModuleType('pybricks.hubs')
+pybricks_hubs.EV3Brick = EV3Brick
+pybricks.hubs = pybricks_hubs
+sys.modules['pybricks.hubs'] = pybricks_hubs
 
-class ToolsModule:
-    wait = wait
-    StopWatch = StopWatch
+# Create pybricks.ev3devices submodule
+pybricks_ev3devices = ModuleType('pybricks.ev3devices')
+pybricks_ev3devices.Motor = Motor
+pybricks_ev3devices.TouchSensor = TouchSensor
+pybricks_ev3devices.ColorSensor = ColorSensor
+pybricks_ev3devices.UltrasonicSensor = UltrasonicSensor
+pybricks_ev3devices.GyroSensor = GyroSensor
+pybricks.ev3devices = pybricks_ev3devices
+sys.modules['pybricks.ev3devices'] = pybricks_ev3devices
 
-# Create pybricks package
-class PyBricks:
-    hubs = HubsModule()
-    ev3devices = DevicesModule()
-    parameters = ParametersModule()
-    tools = ToolsModule()
+# Create pybricks.parameters submodule
+pybricks_parameters = ModuleType('pybricks.parameters')
+pybricks_parameters.Port = Port
+pybricks_parameters.Color = Color
+pybricks.parameters = pybricks_parameters
+sys.modules['pybricks.parameters'] = pybricks_parameters
 
-pybricks = PyBricks()
+# Create pybricks.tools submodule
+pybricks_tools = ModuleType('pybricks.tools')
+pybricks_tools.wait = wait
+pybricks_tools.StopWatch = StopWatch
+pybricks.tools = pybricks_tools
+sys.modules['pybricks.tools'] = pybricks_tools
 `;
 
     await pyodide.runPythonAsync(pybricksStub);
