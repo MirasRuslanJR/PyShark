@@ -1,447 +1,420 @@
-// ui.js - UI management and page navigation
+/**
+ * UI.JS
+ * User interface rendering and management
+ */
 
-import { curriculum, getLessonById, getNextLesson, getPreviousLesson } from './curriculum.js';
-import { loadData, saveData, completeLesson, isLessonUnlocked } from './storage.js';
-import { getMascotMessage, updateMascotMessage, animateMascot, showXPNotification, showLevelUpNotification, checkAchievements, getTrackProgress } from './gamification.js';
-import { initializeEditor, setEditorCode, getEditorCode, formatCode, clearEditor } from './editor.js';
-import { runPythonCode } from './python-runner.js';
-import { createLessonSimulator, createPlaygroundSimulator, resetLessonSimulator, resetPlaygroundSimulator, getLessonSimulator, getPlaygroundSimulator } from './robot-sim.js';
+class UIManager {
+    constructor(progressManager, gamificationManager) {
+        this.progress = progressManager;
+        this.gamification = gamificationManager;
+        this.currentView = 'dashboard';
+        this.currentLessonData = null;
+        this.currentQuestionIndex = 0;
+        this.lessonScore = 0;
+        this.lessonAnswers = [];
+    }
 
-let userData = null;
-let currentLessonId = null;
+    // Инициализация UI
+    init() {
+        this.showView('dashboard');
+        this.updateAllStats();
+        this.renderLessonMap();
+        this.renderAllAchievements();
+        this.setupEventListeners();
+    }
 
-// Initialize UI
-export function initializeUI() {
-    userData = loadData();
-    setupNavigation();
-    setupDashboard();
-    setupLessonsMap();
-    showPage('dashboard');
-    updateAllStats();
-    
-    // Show welcome message
-    const welcomeMsg = getMascotMessage('welcome');
-    updateMascotMessage(welcomeMsg);
-    animateMascot('happy');
-}
+    // Настройка обработчиков событий
+    setupEventListeners() {
+        // Клик по плавающей акуле
+        const shark = document.getElementById('floatingShark');
+        if (shark) {
+            shark.addEventListener('click', () => {
+                this.gamification.handleSharkClick();
+            });
+        }
+    }
 
-// Setup navigation
-function setupNavigation() {
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            const page = e.currentTarget.dataset.page;
-            showPage(page);
-            
-            // Update active nav
-            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-            e.currentTarget.classList.add('active');
+    // Показать определенный view
+    showView(viewName) {
+        // Скрыть все views
+        document.querySelectorAll('.view').forEach(view => {
+            view.classList.remove('active');
         });
-    });
-}
 
-// Show page
-function showPage(pageName) {
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-    });
-    
-    const targetPage = document.getElementById(`${pageName}-page`);
-    if (targetPage) {
-        targetPage.classList.add('active');
+        // Показать нужный view
+        const targetView = document.getElementById(viewName + 'View');
+        if (targetView) {
+            targetView.classList.add('active');
+            this.currentView = viewName;
+        }
+
+        // Обновить данные при открытии view
+        if (viewName === 'dashboard') {
+            this.updateDashboard();
+        } else if (viewName === 'profile') {
+            this.updateProfile();
+        }
     }
-    
-    // Page-specific initialization
-    if (pageName === 'playground') {
-        initializePlayground();
-    } else if (pageName === 'profile') {
-        updateProfilePage();
-    }
-}
 
-// Setup dashboard
-function setupDashboard() {
-    // Continue learning button
-    const continueBtn = document.getElementById('continue-btn');
-    if (continueBtn) {
-        continueBtn.addEventListener('click', () => {
-            const nextLesson = findNextUncompletedLesson();
-            if (nextLesson) {
-                openLesson(nextLesson.id);
-            }
-        });
-    }
-    
-    updateDashboardStats();
-}
-
-// Update dashboard stats
-function updateDashboardStats() {
-    // Update stat cards
-    document.getElementById('total-xp').textContent = userData.xp;
-    document.getElementById('lessons-completed').textContent = userData.completedLessons.length;
-    document.getElementById('current-level').textContent = userData.level;
-    document.getElementById('streak-count').textContent = userData.streak;
-    
-    // Update track progress
-    updateTrackProgressBars();
-    
-    // Update next lesson card
-    updateNextLessonCard();
-}
-
-// Update track progress bars
-function updateTrackProgressBars() {
-    const tracks = ['beginner', 'intermediate', 'advanced'];
-    
-    tracks.forEach(track => {
-        const progress = getTrackProgress(curriculum, track, userData.completedLessons);
-        const progressEl = document.getElementById(`${track}-progress`);
-        const barEl = document.getElementById(`${track}-bar`);
+    // Обновить все статистики
+    updateAllStats() {
+        const data = this.progress.getData();
         
-        if (progressEl) {
-            progressEl.textContent = `${progress.completed}/${progress.total}`;
-        }
-        if (barEl) {
-            barEl.style.width = `${progress.percentage}%`;
-        }
-    });
-}
+        // Навбар
+        document.getElementById('navXP').textContent = data.xp;
+        document.getElementById('navStreak').textContent = data.streak;
+        document.getElementById('navLevel').textContent = data.level;
 
-// Update next lesson card
-function updateNextLessonCard() {
-    const nextLesson = findNextUncompletedLesson();
-    const card = document.getElementById('next-lesson-card');
-    
-    if (nextLesson && card) {
-        const lessonNumber = getLessonNumber(nextLesson.id);
-        card.querySelector('.lesson-number').textContent = `Lesson ${lessonNumber}`;
-        card.querySelector('.lesson-title').textContent = nextLesson.title;
-        card.querySelector('.lesson-desc').textContent = nextLesson.description;
+        // Дашборд
+        document.getElementById('totalXP').textContent = data.xp;
+        document.getElementById('currentStreak').textContent = data.streak;
+        document.getElementById('completedLessons').textContent = data.stats.totalLessons;
+        document.getElementById('achievementCount').textContent = data.achievements.length;
+
+        // Ежедневная цель
+        this.updateDailyGoal();
     }
-}
 
-// Find next uncompleted lesson
-function findNextUncompletedLesson() {
-    for (const track of ['beginner', 'intermediate', 'advanced']) {
-        for (const lesson of curriculum[track]) {
-            if (!userData.completedLessons.includes(lesson.id)) {
-                return lesson;
-            }
-        }
-    }
-    return curriculum.beginner[0]; // Default to first lesson
-}
-
-// Get lesson number across all tracks
-function getLessonNumber(lessonId) {
-    let count = 1;
-    for (const track of ['beginner', 'intermediate', 'advanced']) {
-        for (const lesson of curriculum[track]) {
-            if (lesson.id === lessonId) return count;
-            count++;
-        }
-    }
-    return 1;
-}
-
-// Setup lessons map
-function setupLessonsMap() {
-    const tracks = ['beginner', 'intermediate', 'advanced'];
-    
-    tracks.forEach(track => {
-        const container = document.getElementById(`${track}-lessons`);
-        if (!container) return;
+    // Обновить ежедневную цель
+    updateDailyGoal() {
+        const goal = this.progress.getData().dailyGoal;
+        const progress = (goal.completed / goal.target) * 100;
         
+        document.getElementById('dailyGoalText').textContent = `${goal.completed}/${goal.target} урока`;
+        document.getElementById('dailyGoalFill').style.width = Math.min(progress, 100) + '%';
+    }
+
+    // Обновить дашборд
+    updateDashboard() {
+        this.updateAllStats();
+        this.renderRecentAchievements();
+    }
+
+    // Отрисовка недавних достижений
+    renderRecentAchievements() {
+        const container = document.getElementById('achievementsList');
+        const unlocked = this.gamification.getUnlockedAchievements();
+        
+        if (unlocked.length === 0) {
+            container.innerHTML = `
+                <div class="achievement-placeholder">
+                    <span>🎯</span>
+                    <p>Начните обучение, чтобы получить первое достижение!</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Показать последние 3 достижения
+        const recent = unlocked.slice(-3).reverse();
+        container.innerHTML = recent.map(ach => `
+            <div class="achievement-item unlocked">
+                <div class="achievement-icon">${ach.icon}</div>
+                <div class="achievement-name">${ach.title}</div>
+                <div class="achievement-description">${ach.description}</div>
+            </div>
+        `).join('');
+    }
+
+    // Отрисовка карты уроков
+    renderLessonMap() {
+        const container = document.getElementById('lessonPath');
         container.innerHTML = '';
-        
-        curriculum[track].forEach((lesson, index) => {
-            const card = createLessonCard(lesson, track, index);
-            container.appendChild(card);
-        });
-    });
-}
 
-// Create lesson card
-function createLessonCard(lesson, track, index) {
-    const card = document.createElement('div');
-    card.className = 'lesson-card';
-    
-    const isCompleted = userData.completedLessons.includes(lesson.id);
-    const isUnlocked = isLessonUnlocked(userData, lesson.id, curriculum);
-    
-    if (isCompleted) card.classList.add('completed');
-    if (!isUnlocked) card.classList.add('locked');
-    
-    const lessonNumber = index + 1;
-    const statusIcon = isCompleted ? '✓' : (isUnlocked ? '○' : '🔒');
-    
-    card.innerHTML = `
-        <div class="lesson-card-header">
-            <span class="lesson-card-number">Lesson ${lessonNumber}</span>
-            <span class="lesson-card-status">${statusIcon}</span>
-        </div>
-        <h4 class="lesson-card-title">${lesson.title}</h4>
-        <p class="lesson-card-desc">${lesson.description}</p>
-        <div class="lesson-card-footer">
-            <span class="lesson-card-xp">+${lesson.xp} XP</span>
-        </div>
-    `;
-    
-    if (isUnlocked) {
-        card.style.cursor = 'pointer';
-        card.addEventListener('click', () => openLesson(lesson.id));
-    }
-    
-    return card;
-}
+        let totalLessons = 0;
+        let completedCount = 0;
 
-// Open lesson
-export function openLesson(lessonId) {
-    currentLessonId = lessonId;
-    const lesson = getLessonById(lessonId);
-    
-    if (!lesson) return;
-    
-    showPage('lesson');
-    
-    // Update lesson header
-    document.getElementById('lesson-badge').textContent = `Lesson ${getLessonNumber(lessonId)}`;
-    document.getElementById('lesson-title').textContent = lesson.title;
-    document.getElementById('lesson-xp').textContent = `+${lesson.xp} XP`;
-    
-    // Update theory section
-    document.getElementById('theory-content').innerHTML = lesson.theory;
-    
-    // Initialize editor with starter code
-    setTimeout(() => {
-        initializeEditor('code-editor', lesson.starterCode || '');
-        createLessonSimulator();
-    }, 100);
-    
-    // Setup lesson controls
-    setupLessonControls(lessonId);
-}
+        // Отрисовка по секциям
+        for (const [key, section] of Object.entries(CURRICULUM)) {
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'lesson-section';
 
-// Setup lesson controls
-function setupLessonControls(lessonId) {
-    // Back button
-    document.getElementById('back-to-map').onclick = () => {
-        showPage('lessons');
-        document.querySelector('[data-page="lessons"]').classList.add('active');
-    };
-    
-    // Run code button
-    document.getElementById('run-code').onclick = async () => {
-        await runLessonCode();
-    };
-    
-    // Format code button
-    document.getElementById('format-code').onclick = () => {
-        formatCode('lesson');
-    };
-    
-    // Clear output button
-    document.getElementById('clear-output').onclick = () => {
-        document.getElementById('output').innerHTML = '';
-    };
-    
-    // Reset robot button
-    document.getElementById('reset-robot').onclick = () => {
-        resetLessonSimulator();
-        updateMascotMessage("Robot reset! Ready to try again? 🦈");
-    };
-    
-    // Navigation buttons
-    const prevLesson = getPreviousLesson(lessonId);
-    const nextLesson = getNextLesson(lessonId);
-    
-    const prevBtn = document.getElementById('prev-lesson');
-    const nextBtn = document.getElementById('next-lesson');
-    
-    prevBtn.style.display = prevLesson ? 'block' : 'none';
-    nextBtn.style.display = nextLesson ? 'block' : 'none';
-    
-    if (prevLesson) {
-        prevBtn.onclick = () => openLesson(prevLesson);
-    }
-    if (nextLesson) {
-        nextBtn.onclick = () => openLesson(nextLesson);
-    }
-    
-    // Complete lesson button
-    document.getElementById('complete-lesson').onclick = () => {
-        completeLessonAction(lessonId);
-    };
-}
+            // Заголовок секции
+            sectionDiv.innerHTML = `
+                <div class="section-header">
+                    <div class="section-title">${section.title}</div>
+                    <div class="section-description">${section.description}</div>
+                </div>
+                <div class="lessons-grid" id="section-${section.id}"></div>
+            `;
 
-// Run lesson code
-async function runLessonCode() {
-    const code = getEditorCode('lesson');
-    const outputEl = document.getElementById('output');
-    const simulator = getLessonSimulator();
-    
-    // Show running message
-    updateMascotMessage(getMascotMessage('codeRun'));
-    animateMascot('thinking');
-    
-    // Increment code runs
-    userData.stats.codeRuns++;
-    saveData(userData);
-    
-    // Run code
-    await runPythonCode(code, (message, clear, type) => {
-        if (clear) {
-            outputEl.innerHTML = '';
-        } else {
-            const line = document.createElement('div');
-            line.className = `output-line ${type ? `output-${type}` : ''}`;
-            line.textContent = message;
-            outputEl.appendChild(line);
-            outputEl.scrollTop = outputEl.scrollHeight;
+            container.appendChild(sectionDiv);
+
+            // Отрисовка уроков секции
+            const lessonsGrid = sectionDiv.querySelector('.lessons-grid');
+            section.lessons.forEach((lesson, index) => {
+                const isCompleted = this.progress.isLessonCompleted(lesson.id);
+                const isUnlocked = this.progress.isLessonUnlocked(lesson.id);
+                
+                totalLessons++;
+                if (isCompleted) completedCount++;
+
+                const lessonNode = document.createElement('div');
+                lessonNode.className = 'lesson-node';
+                
+                let circleClass = 'lesson-circle';
+                if (isCompleted) circleClass += ' completed';
+                if (!isUnlocked) circleClass += ' locked';
+
+                lessonNode.innerHTML = `
+                    <div class="${circleClass}">
+                        ${lesson.icon}
+                        ${isCompleted ? '<div class="lesson-checkmark">✓</div>' : ''}
+                    </div>
+                    <div class="lesson-label">
+                        <div class="lesson-title">${lesson.title}</div>
+                        <div class="lesson-xp-badge">⚡ ${lesson.xp} XP</div>
+                    </div>
+                `;
+
+                if (isUnlocked) {
+                    lessonNode.addEventListener('click', () => {
+                        this.startLesson(lesson);
+                    });
+                }
+
+                lessonsGrid.appendChild(lessonNode);
+            });
         }
-    }, simulator);
-}
 
-// Complete lesson action
-function completeLessonAction(lessonId) {
-    const lesson = getLessonById(lessonId);
-    if (!lesson) return;
-    
-    const oldLevel = userData.level;
-    
-    // Complete lesson
-    completeLesson(userData, lessonId, lesson.xp);
-    
-    // Show notifications
-    showXPNotification(lesson.xp);
-    
-    if (userData.level > oldLevel) {
-        showLevelUpNotification(userData.level);
+        // Обновить общий прогресс
+        const progressPercent = (completedCount / totalLessons) * 100;
+        document.getElementById('pathProgressText').textContent = Math.round(progressPercent) + '%';
+        document.getElementById('pathProgressFill').style.width = progressPercent + '%';
     }
-    
-    // Update UI
-    updateAllStats();
-    updateMascotMessage(getMascotMessage('lessonComplete'));
-    animateMascot('excited');
-    
-    // Move to next lesson
-    setTimeout(() => {
-        const nextLesson = getNextLesson(lessonId);
-        if (nextLesson) {
-            openLesson(nextLesson);
-        } else {
-            showPage('lessons');
-        }
-    }, 2000);
-}
 
-// Initialize playground
-function initializePlayground() {
-    const starterCode = `from pybricks.hubs import EV3Brick
-from pybricks.ev3devices import Motor
-from pybricks.parameters import Port
-from pybricks.tools import wait
-
-# Initialize
-brick = EV3Brick()
-motor = Motor(Port.A)
-
-# Your code here
-print("Hello, Robotics!")
-`;
-
-    // Initialize editor if not already done
-    setTimeout(() => {
-        if (!document.querySelector('#playground-code-editor .monaco-editor')) {
-            initializeEditor('playground-code-editor', starterCode);
-            createPlaygroundSimulator();
-        }
-    }, 100);
-    
-    // Setup playground controls
-    setupPlaygroundControls();
-}
-
-// Setup playground controls
-function setupPlaygroundControls() {
-    document.getElementById('playground-run').onclick = async () => {
-        const code = getEditorCode('playground');
-        const outputEl = document.getElementById('playground-output');
-        const simulator = getPlaygroundSimulator();
+    // Начать урок
+    startLesson(lesson) {
+        this.currentLessonData = lesson;
+        this.currentQuestionIndex = 0;
+        this.lessonScore = 0;
+        this.lessonAnswers = [];
         
-        await runPythonCode(code, (message, clear, type) => {
-            if (clear) {
-                outputEl.innerHTML = '';
-            } else {
-                const line = document.createElement('div');
-                line.className = `output-line ${type ? `output-${type}` : ''}`;
-                line.textContent = message;
-                outputEl.appendChild(line);
-                outputEl.scrollTop = outputEl.scrollHeight;
-            }
-        }, simulator);
+        // Проверка достижений по времени
+        this.gamification.checkTimeBasedAchievements();
         
-        userData.stats.codeRuns++;
-        saveData(userData);
-    };
-    
-    document.getElementById('playground-format').onclick = () => {
-        formatCode('playground');
-    };
-    
-    document.getElementById('playground-clear').onclick = () => {
-        clearEditor('playground');
-    };
-    
-    document.getElementById('playground-clear-output').onclick = () => {
-        document.getElementById('playground-output').innerHTML = '';
-    };
-    
-    document.getElementById('playground-reset').onclick = () => {
-        resetPlaygroundSimulator();
-    };
-}
+        this.showView('lesson');
+        this.renderQuestion();
+    }
 
-// Update profile page
-function updateProfilePage() {
-    document.getElementById('profile-level').textContent = userData.level;
-    document.getElementById('profile-xp-text').textContent = 
-        `${userData.xp} / ${Math.pow(userData.level, 2) * 100} XP`;
-    
-    const xpProgress = (userData.xp % (Math.pow(userData.level, 2) * 100)) / 
-                       (Math.pow(userData.level, 2) * 100) * 100;
-    document.getElementById('profile-xp-bar').style.width = `${xpProgress}%`;
-    
-    // Update stats
-    document.getElementById('stat-lessons').textContent = userData.stats.totalLessons;
-    document.getElementById('stat-runs').textContent = userData.stats.codeRuns;
-    document.getElementById('stat-streak').textContent = `${userData.streak} days`;
-    document.getElementById('stat-time').textContent = 
-        `${Math.floor(userData.stats.timeSpent / 60)} hours`;
-    
-    // Update achievements
-    const achievementsEl = document.getElementById('achievements');
-    const unlockedAchievements = checkAchievements(userData);
-    
-    achievementsEl.innerHTML = '';
-    unlockedAchievements.forEach(achievement => {
-        const achievementEl = document.createElement('div');
-        achievementEl.className = `achievement ${achievement.unlocked ? '' : 'locked'}`;
-        achievementEl.innerHTML = `
-            <span class="achievement-icon">${achievement.icon}</span>
-            <span class="achievement-name">${achievement.name}</span>
+    // Отрисовка вопроса
+    renderQuestion() {
+        const lesson = this.currentLessonData;
+        const question = lesson.questions[this.currentQuestionIndex];
+        const container = document.getElementById('lessonContent');
+
+        // Обновить прогресс урока
+        const progress = ((this.currentQuestionIndex + 1) / lesson.questions.length) * 100;
+        document.getElementById('lessonProgressFill').style.width = progress + '%';
+        document.getElementById('lessonProgressText').textContent = 
+            `${this.currentQuestionIndex + 1}/${lesson.questions.length}`;
+        document.getElementById('lessonXP').textContent = lesson.xp;
+
+        // Сбросить кнопки
+        document.getElementById('lessonCheckBtn').style.display = 'inline-block';
+        document.getElementById('lessonNextBtn').style.display = 'none';
+        document.getElementById('lessonSkipBtn').style.display = 
+            question.type !== 'explanation' ? 'inline-block' : 'none';
+
+        // Отрисовка в зависимости от типа вопроса
+        if (question.type === 'explanation') {
+            container.innerHTML = this.renderExplanation(question);
+            document.getElementById('lessonCheckBtn').textContent = 'Понятно!';
+        } else if (question.type === 'multiple') {
+            container.innerHTML = this.renderMultipleChoice(question);
+            document.getElementById('lessonCheckBtn').textContent = 'Проверить';
+        } else if (question.type === 'code') {
+            container.innerHTML = this.renderCodeInput(question);
+            document.getElementById('lessonCheckBtn').textContent = 'Проверить';
+        }
+    }
+
+    // Отрисовка объяснения
+    renderExplanation(question) {
+        return `
+            <div class="question-card">
+                <div class="question-type">📖 Теория</div>
+                <div class="question-title">${question.title}</div>
+                
+                <div class="explanation-card">
+                    ${question.emoji ? `<div style="font-size: 48px; margin-bottom: 20px;">${question.emoji}</div>` : ''}
+                    <p style="font-size: 18px; line-height: 1.6; margin-bottom: 20px;">${question.content}</p>
+                    ${question.highlight ? `<p style="background: #ffe0f0; padding: 15px; border-radius: 10px; font-weight: 600; color: #ff1493;">${question.highlight}</p>` : ''}
+                </div>
+                
+                ${question.code ? `<div class="code-block">${this.highlightCode(question.code)}</div>` : ''}
+            </div>
         `;
-        achievementsEl.appendChild(achievementEl);
-    });
+    }
+
+    // Отрисовка вопроса с выбором ответа
+    renderMultipleChoice(question) {
+        return `
+            <div class="question-card">
+                <div class="question-type">❓ Вопрос</div>
+                <div class="question-title">${question.question}</div>
+                
+                ${question.code ? `<div class="code-block">${this.highlightCode(question.code)}</div>` : ''}
+                
+                <div class="options-list">
+                    ${question.options.map((option, index) => `
+                        <div class="option-item" data-index="${index}">
+                            ${option}
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="feedback-card" id="feedback"></div>
+            </div>
+        `;
+    }
+
+    // Отрисовка вопроса с вводом кода
+    renderCodeInput(question) {
+        return `
+            <div class="question-card">
+                <div class="question-type">💻 Код</div>
+                <div class="question-title">${question.question}</div>
+                
+                ${question.hint ? `<div class="input-hint">💡 ${question.hint}</div>` : ''}
+                
+                <input type="text" class="code-input" id="codeInput" 
+                       placeholder="Введите ваш код здесь..." autocomplete="off">
+                
+                <div class="feedback-card" id="feedback"></div>
+            </div>
+        `;
+    }
+
+    // Подсветка синтаксиса кода
+    highlightCode(code) {
+        return code
+            .replace(/\n/g, '<br>')
+            .replace(/(#.*)/g, '<span class="code-comment">$1</span>')
+            .replace(/\b(from|import|def|class|if|else|elif|while|for|in|return|True|False)\b/g, 
+                '<span class="code-keyword">$1</span>')
+            .replace(/(['"].*?['"])/g, '<span class="code-string">$1</span>')
+            .replace(/\b(\d+)\b/g, '<span class="code-number">$1</span>');
+    }
+
+    // Обновить профиль
+    updateProfile() {
+        const stats = this.progress.getProfileStats();
+        
+        document.getElementById('profileLevel').textContent = `Уровень ${stats.level}`;
+        document.getElementById('profileXP').textContent = stats.xp;
+        document.getElementById('profileStreak').textContent = stats.streak;
+        document.getElementById('profileCompleted').textContent = stats.completedLessons;
+        
+        this.renderAllAchievements();
+    }
+
+    // Отрисовка всех достижений
+    renderAllAchievements() {
+        const container = document.getElementById('allAchievements');
+        const unlocked = this.gamification.getUnlockedAchievements();
+        const locked = this.gamification.getLockedAchievements();
+        const unlockedIds = unlocked.map(a => a.id);
+
+        const allAchievements = this.gamification.getAllAchievements();
+        
+        container.innerHTML = allAchievements.map(ach => {
+            const isUnlocked = unlockedIds.includes(ach.id);
+            return `
+                <div class="achievement-item ${isUnlocked ? 'unlocked' : 'locked'}">
+                    <div class="achievement-icon">${ach.icon}</div>
+                    <div class="achievement-name">${ach.title}</div>
+                    <div class="achievement-description">${ach.description}</div>
+                    ${!isUnlocked ? '<div class="achievement-description">🔒 Заблокировано</div>' : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Показать результаты урока
+    showLessonSummary() {
+        const lesson = this.currentLessonData;
+        const totalQuestions = this.lessonAnswers.length;
+        const correctAnswers = this.lessonAnswers.filter(a => a).length;
+        const score = Math.round((correctAnswers / totalQuestions) * 100);
+        
+        this.lessonScore = score;
+
+        const container = document.getElementById('lessonContent');
+        
+        // Завершаем урок в прогрессе
+        this.progress.completeLesson(lesson.id, score);
+        
+        // Начисляем XP
+        const xpEarned = Math.round(lesson.xp * (score / 100));
+        const result = this.progress.addXP(xpEarned);
+
+        // Проверяем ежедневную цель
+        const goalCompleted = this.gamification.checkDailyGoal();
+
+        container.innerHTML = `
+            <div class="summary-test">
+                <div class="summary-icon">${score === 100 ? '🏆' : score >= 70 ? '🎉' : '📚'}</div>
+                <div class="summary-title">
+                    ${score === 100 ? 'Идеально!' : score >= 70 ? 'Отличная работа!' : 'Урок завершен!'}
+                </div>
+                <div class="summary-description">
+                    Вы набрали ${score}% и получили ${xpEarned} XP!
+                </div>
+                
+                <div class="summary-stats">
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">${correctAnswers}/${totalQuestions}</div>
+                        <div class="summary-stat-label">Верных ответов</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">${score}%</div>
+                        <div class="summary-stat-label">Точность</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">+${xpEarned}</div>
+                        <div class="summary-stat-label">XP получено</div>
+                    </div>
+                </div>
+                
+                ${result.levelUp ? `
+                    <div style="background: linear-gradient(135deg, #ff69b4, #ff1493); 
+                                color: white; padding: 20px; border-radius: 15px; 
+                                margin: 20px 0; font-size: 20px; font-weight: 700;">
+                        🎊 Повышение уровня! Теперь вы ${result.newLevel} уровня!
+                    </div>
+                ` : ''}
+                
+                ${goalCompleted ? `
+                    <div style="background: #90EE90; padding: 15px; 
+                                border-radius: 10px; margin: 15px 0;">
+                        🎯 Ежедневная цель выполнена!
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        // Скрыть кнопки проверки
+        document.getElementById('lessonCheckBtn').style.display = 'none';
+        document.getElementById('lessonNextBtn').style.display = 'none';
+        document.getElementById('lessonSkipBtn').style.display = 'none';
+
+        // Показать празднование
+        this.gamification.showCelebration(
+            score === 100 ? 'Идеальный результат! 🏆' : 'Урок завершен! 🎉'
+        );
+
+        // Обновить статистику
+        this.updateAllStats();
+
+        // Автоматически вернуться к карте через 5 секунд
+        setTimeout(() => {
+            this.exitLesson();
+        }, 5000);
+    }
 }
 
-// Update all stats
-function updateAllStats() {
-    updateDashboardStats();
-    setupLessonsMap();
-}
-
-// Export current lesson ID
-export function getCurrentLessonId() {
-    return currentLessonId;
+// Экспорт
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { UIManager };
 }

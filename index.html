@@ -1,395 +1,251 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyBricks Academy 🦈 - Learn Robotics Programming</title>
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Monaco Editor -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
-    
-    <!-- Main Styles -->
+    <title>PyShark Academy - Обучение робототехнике</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="loading-screen">
-        <div class="loading-content">
-            <div class="shark-loader">
-                <div class="shark-emoji">🦈</div>
-                <div class="wave"></div>
-                <div class="wave"></div>
-                <div class="wave"></div>
+    <!-- Main Navigation -->
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <div class="shark-logo">🦈</div>
+                <span class="logo-text">PyShark Academy</span>
             </div>
-            <p class="loading-text">Loading PyBricks Academy...</p>
+            <div class="nav-stats">
+                <div class="stat-item">
+                    <span class="stat-icon">⚡</span>
+                    <span class="stat-value" id="navXP">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">🔥</span>
+                    <span class="stat-value" id="navStreak">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">💎</span>
+                    <span class="stat-value" id="navLevel">1</span>
+                </div>
+            </div>
+            <button class="profile-btn" onclick="showProfile()">
+                <span class="profile-avatar">🦈</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Dashboard View -->
+        <div id="dashboardView" class="view active">
+            <div class="dashboard-header">
+                <div class="welcome-card">
+                    <div class="shark-greeting">
+                        <div class="shark-mascot animated">🦈</div>
+                        <div class="greeting-text">
+                            <h1>Привет, Ученик!</h1>
+                            <p>Готов изучать робототехнику сегодня?</p>
+                        </div>
+                    </div>
+                    <div class="daily-goal">
+                        <div class="goal-header">
+                            <span>Ежедневная цель</span>
+                            <span class="goal-progress" id="dailyGoalText">0/3 урока</span>
+                        </div>
+                        <div class="goal-bar">
+                            <div class="goal-fill" id="dailyGoalFill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-card-icon">⚡</div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-value" id="totalXP">0</div>
+                            <div class="stat-card-label">Всего XP</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon">🔥</div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-value" id="currentStreak">0</div>
+                            <div class="stat-card-label">Дней подряд</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon">✅</div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-value" id="completedLessons">0</div>
+                            <div class="stat-card-label">Уроков завершено</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon">🏆</div>
+                        <div class="stat-card-content">
+                            <div class="stat-card-value" id="achievementCount">0</div>
+                            <div class="stat-card-label">Достижений</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-content">
+                <button class="primary-cta" onclick="showLessonMap()">
+                    <span>Начать обучение</span>
+                    <span class="cta-arrow">→</span>
+                </button>
+
+                <div class="recent-achievements" id="recentAchievements">
+                    <h2>Недавние достижения</h2>
+                    <div class="achievements-list" id="achievementsList">
+                        <div class="achievement-placeholder">
+                            <span>🎯</span>
+                            <p>Начните обучение, чтобы получить первое достижение!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lesson Map View -->
+        <div id="lessonMapView" class="view">
+            <div class="view-header">
+                <button class="back-btn" onclick="showDashboard()">
+                    <span>←</span> Назад
+                </button>
+                <h1>Карта обучения</h1>
+            </div>
+
+            <div class="lesson-map-container">
+                <div class="path-progress">
+                    <div class="progress-info">
+                        <span>Прогресс обучения</span>
+                        <span id="pathProgressText">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="pathProgressFill"></div>
+                    </div>
+                </div>
+
+                <div class="lesson-path" id="lessonPath">
+                    <!-- Lessons will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Lesson View -->
+        <div id="lessonView" class="view">
+            <div class="lesson-header">
+                <button class="back-btn" onclick="exitLesson()">
+                    <span>✕</span>
+                </button>
+                <div class="lesson-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="lessonProgressFill"></div>
+                    </div>
+                    <span class="progress-text" id="lessonProgressText">0/0</span>
+                </div>
+                <div class="lesson-xp">
+                    <span class="xp-icon">⚡</span>
+                    <span id="lessonXP">0</span>
+                </div>
+            </div>
+
+            <div class="lesson-content" id="lessonContent">
+                <!-- Lesson content will be rendered here -->
+            </div>
+
+            <div class="lesson-footer">
+                <button class="btn-secondary" id="lessonSkipBtn" onclick="skipQuestion()">
+                    Пропустить
+                </button>
+                <button class="btn-primary" id="lessonCheckBtn" onclick="checkAnswer()">
+                    Проверить
+                </button>
+                <button class="btn-primary" id="lessonNextBtn" onclick="nextQuestion()" style="display: none;">
+                    Далее →
+                </button>
+            </div>
+        </div>
+
+        <!-- Profile View -->
+        <div id="profileView" class="view">
+            <div class="view-header">
+                <button class="back-btn" onclick="showDashboard()">
+                    <span>←</span> Назад
+                </button>
+                <h1>Профиль</h1>
+            </div>
+
+            <div class="profile-content">
+                <div class="profile-card">
+                    <div class="profile-avatar-large">🦈</div>
+                    <h2 id="profileName">Ученик PyShark</h2>
+                    <div class="profile-level">
+                        <span class="level-badge" id="profileLevel">Уровень 1</span>
+                    </div>
+                    <div class="profile-stats-grid">
+                        <div class="profile-stat">
+                            <div class="profile-stat-value" id="profileXP">0</div>
+                            <div class="profile-stat-label">Всего XP</div>
+                        </div>
+                        <div class="profile-stat">
+                            <div class="profile-stat-value" id="profileStreak">0</div>
+                            <div class="profile-stat-label">Макс. серия</div>
+                        </div>
+                        <div class="profile-stat">
+                            <div class="profile-stat-value" id="profileCompleted">0</div>
+                            <div class="profile-stat-label">Уроков</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="achievements-section">
+                    <h2>Все достижения</h2>
+                    <div class="achievements-grid" id="allAchievements">
+                        <!-- Achievements will be rendered here -->
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h2>Настройки</h2>
+                    <button class="btn-danger" onclick="resetProgress()">
+                        🔄 Сбросить прогресс
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Main App Container -->
-    <div id="app" class="app-container" style="display: none;">
-        
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <span class="logo-shark">🦈</span>
-                    <span class="logo-text">PyBricks<br>Academy</span>
-                </div>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <button class="nav-item active" data-page="dashboard">
-                    <span class="nav-icon">🏠</span>
-                    <span class="nav-text">Dashboard</span>
-                </button>
-                <button class="nav-item" data-page="lessons">
-                    <span class="nav-icon">🗺️</span>
-                    <span class="nav-text">Lesson Map</span>
-                </button>
-                <button class="nav-item" data-page="playground">
-                    <span class="nav-icon">⚡</span>
-                    <span class="nav-text">Playground</span>
-                </button>
-                <button class="nav-item" data-page="profile">
-                    <span class="nav-icon">👤</span>
-                    <span class="nav-text">Profile</span>
-                </button>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <div class="streak-counter">
-                    <span class="streak-icon">🔥</span>
-                    <div class="streak-info">
-                        <span class="streak-number" id="streak-count">0</span>
-                        <span class="streak-label">day streak</span>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Content Area -->
-        <main class="main-content">
-            
-            <!-- Dashboard Page -->
-            <div id="dashboard-page" class="page active">
-                <div class="page-header">
-                    <h1 class="page-title">Welcome Back! 🦈</h1>
-                    <p class="page-subtitle">Let's continue your robotics journey</p>
-                </div>
-                
-                <div class="dashboard-grid">
-                    <!-- Stats Cards -->
-                    <div class="stat-card">
-                        <div class="stat-icon">⭐</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="total-xp">0</div>
-                            <div class="stat-label">Total XP</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">🎯</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="lessons-completed">0</div>
-                            <div class="stat-label">Lessons Completed</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon">📊</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="current-level">1</div>
-                            <div class="stat-label">Current Level</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Mascot Card -->
-                    <div class="mascot-card">
-                        <div class="mascot-container">
-                            <div class="mascot-shark" id="mascot">🦈</div>
-                            <div class="mascot-bubble" id="mascot-message">
-                                Ready to learn some robotics? Let's dive in!
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Continue Learning Card -->
-                    <div class="continue-card">
-                        <h3>Continue Learning</h3>
-                        <div class="next-lesson" id="next-lesson-card">
-                            <div class="lesson-preview">
-                                <span class="lesson-number">Lesson 1</span>
-                                <h4 class="lesson-title">Introduction to PyBricks</h4>
-                                <p class="lesson-desc">Learn the basics of programming robots</p>
-                            </div>
-                            <button class="btn-primary" id="continue-btn">Start Lesson →</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Progress Overview -->
-                    <div class="progress-card">
-                        <h3>Your Progress</h3>
-                        <div class="progress-tracks">
-                            <div class="track">
-                                <div class="track-header">
-                                    <span class="track-name">Beginner</span>
-                                    <span class="track-progress" id="beginner-progress">0/12</span>
-                                </div>
-                                <div class="track-bar">
-                                    <div class="track-fill" id="beginner-bar" style="width: 0%"></div>
-                                </div>
-                            </div>
-                            <div class="track">
-                                <div class="track-header">
-                                    <span class="track-name">Intermediate</span>
-                                    <span class="track-progress" id="intermediate-progress">0/15</span>
-                                </div>
-                                <div class="track-bar">
-                                    <div class="track-fill" id="intermediate-bar" style="width: 0%"></div>
-                                </div>
-                            </div>
-                            <div class="track">
-                                <div class="track-header">
-                                    <span class="track-name">Advanced</span>
-                                    <span class="track-progress" id="advanced-progress">0/18</span>
-                                </div>
-                                <div class="track-bar">
-                                    <div class="track-fill" id="advanced-bar" style="width: 0%"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Lessons Map Page -->
-            <div id="lessons-page" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Learning Path 🗺️</h1>
-                    <p class="page-subtitle">Your journey through PyBricks robotics</p>
-                </div>
-                
-                <div class="curriculum-container">
-                    <div class="curriculum-track" data-track="beginner">
-                        <h2 class="track-title">🌟 Beginner Track</h2>
-                        <div class="lessons-grid" id="beginner-lessons"></div>
-                    </div>
-                    
-                    <div class="curriculum-track" data-track="intermediate">
-                        <h2 class="track-title">⚡ Intermediate Track</h2>
-                        <div class="lessons-grid" id="intermediate-lessons"></div>
-                    </div>
-                    
-                    <div class="curriculum-track" data-track="advanced">
-                        <h2 class="track-title">🚀 Advanced Track</h2>
-                        <div class="lessons-grid" id="advanced-lessons"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Lesson View Page -->
-            <div id="lesson-page" class="page">
-                <div class="lesson-header">
-                    <button class="btn-back" id="back-to-map">← Back to Map</button>
-                    <div class="lesson-info">
-                        <span class="lesson-badge" id="lesson-badge">Lesson 1</span>
-                        <h1 class="lesson-title" id="lesson-title">Introduction to PyBricks</h1>
-                    </div>
-                    <div class="lesson-xp" id="lesson-xp">+50 XP</div>
-                </div>
-                
-                <div class="lesson-content">
-                    <!-- Theory Section -->
-                    <div class="theory-section">
-                        <div class="theory-card" id="theory-content">
-                            <h2>Loading...</h2>
-                        </div>
-                    </div>
-                    
-                    <!-- Code Section -->
-                    <div class="code-section">
-                        <div class="section-header">
-                            <h3>Try It Yourself</h3>
-                            <div class="code-controls">
-                                <button class="btn-secondary" id="format-code">Format Code</button>
-                                <button class="btn-primary" id="run-code">▶ Run Code</button>
-                            </div>
-                        </div>
-                        
-                        <div class="editor-container">
-                            <div id="code-editor"></div>
-                        </div>
-                        
-                        <div class="output-container">
-                            <div class="output-header">
-                                <span>Output</span>
-                                <button class="btn-clear" id="clear-output">Clear</button>
-                            </div>
-                            <div class="output-content" id="output"></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Simulation Section -->
-                    <div class="simulation-section">
-                        <h3>Robot Simulation</h3>
-                        <div id="robot-canvas"></div>
-                        <div class="sim-controls">
-                            <button class="btn-secondary" id="reset-robot">Reset Robot</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="lesson-footer">
-                    <button class="btn-secondary" id="prev-lesson">← Previous</button>
-                    <button class="btn-primary btn-large" id="complete-lesson">Complete Lesson ✓</button>
-                    <button class="btn-secondary" id="next-lesson">Next →</button>
-                </div>
-            </div>
-
-            <!-- Playground Page -->
-            <div id="playground-page" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Code Playground ⚡</h1>
-                    <p class="page-subtitle">Experiment freely with PyBricks code</p>
-                </div>
-                
-                <div class="playground-layout">
-                    <div class="playground-editor">
-                        <div class="section-header">
-                            <h3>Code Editor</h3>
-                            <div class="code-controls">
-                                <button class="btn-secondary" id="playground-format">Format</button>
-                                <button class="btn-secondary" id="playground-clear">Clear</button>
-                                <button class="btn-primary" id="playground-run">▶ Run</button>
-                            </div>
-                        </div>
-                        <div id="playground-code-editor"></div>
-                        
-                        <div class="output-container">
-                            <div class="output-header">
-                                <span>Console Output</span>
-                                <button class="btn-clear" id="playground-clear-output">Clear</button>
-                            </div>
-                            <div class="output-content" id="playground-output"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="playground-sim">
-                        <h3>Robot Simulation</h3>
-                        <div id="playground-canvas"></div>
-                        <div class="sim-controls">
-                            <button class="btn-secondary" id="playground-reset">Reset Robot</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Profile Page -->
-            <div id="profile-page" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Your Profile 👤</h1>
-                    <p class="page-subtitle">Track your learning journey</p>
-                </div>
-                
-                <div class="profile-grid">
-                    <div class="profile-card">
-                        <div class="profile-mascot">🦈</div>
-                        <h2 id="profile-name">PyBricks Learner</h2>
-                        <div class="profile-level">
-                            <span>Level <strong id="profile-level">1</strong></span>
-                        </div>
-                        <div class="profile-xp">
-                            <div class="xp-bar">
-                                <div class="xp-fill" id="profile-xp-bar"></div>
-                            </div>
-                            <span id="profile-xp-text">0 / 100 XP</span>
-                        </div>
-                    </div>
-                    
-                    <div class="achievements-card">
-                        <h3>Achievements</h3>
-                        <div class="achievements-grid" id="achievements">
-                            <div class="achievement locked">
-                                <span class="achievement-icon">🎯</span>
-                                <span class="achievement-name">First Steps</span>
-                            </div>
-                            <div class="achievement locked">
-                                <span class="achievement-icon">🔥</span>
-                                <span class="achievement-name">Week Warrior</span>
-                            </div>
-                            <div class="achievement locked">
-                                <span class="achievement-icon">🚀</span>
-                                <span class="achievement-name">Speed Runner</span>
-                            </div>
-                            <div class="achievement locked">
-                                <span class="achievement-icon">💎</span>
-                                <span class="achievement-name">Perfectionist</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="stats-detailed">
-                        <h3>Detailed Statistics</h3>
-                        <div class="stat-row">
-                            <span>Total Lessons Completed</span>
-                            <strong id="stat-lessons">0</strong>
-                        </div>
-                        <div class="stat-row">
-                            <span>Code Runs</span>
-                            <strong id="stat-runs">0</strong>
-                        </div>
-                        <div class="stat-row">
-                            <span>Longest Streak</span>
-                            <strong id="stat-streak">0 days</strong>
-                        </div>
-                        <div class="stat-row">
-                            <span>Time Learning</span>
-                            <strong id="stat-time">0 hours</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
+    <!-- Floating Shark Mascot -->
+    <div class="floating-shark" id="floatingShark">
+        🦈
     </div>
-    <script>
-        let pyodideReady = null;
 
-async function initializePyodide() {
-    pyodideReady = await loadPyodide({
-        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/"
-    });
-    console.log("Pyodide готов!");
-}
+    <!-- Celebration Overlay -->
+    <div class="celebration-overlay" id="celebrationOverlay">
+        <div class="celebration-content">
+            <div class="celebration-shark">🦈</div>
+            <div class="celebration-text"></div>
+            <div class="confetti"></div>
+        </div>
+    </div>
 
-// Вызываем сразу при загрузке страницы
-initializePyodide();
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievementPopup">
+        <div class="achievement-popup-content">
+            <div class="achievement-popup-icon"></div>
+            <div class="achievement-popup-title"></div>
+            <div class="achievement-popup-description"></div>
+        </div>
+    </div>
 
-    </script>
-    <!-- Monaco Editor Configuration (prevents stackframe.js error) -->
-    <script>
-        window.MonacoEnvironment = {
-            getWorkerUrl: function(moduleId, label) {
-                return 'data:text/javascript;charset=utf-8,' + encodeURIComponent('self.MonacoEnvironment = {baseUrl: "https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/"};importScripts("https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/base/worker/workerMain.js");');
-            }
-        };
-    </script>
-    <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
-    <!-- App Modules -->
-    <script type="module" src="js/storage.js"></script>
-    <script type="module" src="js/curriculum.js"></script>
-    <script type="module" src="js/gamification.js"></script>
-    <script type="module" src="js/editor.js"></script>
-    <script type="module" src="js/python-runner.js"></script>
-    <script type="module" src="js/robot-sim.js"></script>
-    <script type="module" src="js/ui.js"></script>
-    <script type="module" src="js/app.js"></script>
+    <!-- Scripts -->
+    <script src="js/lessons.js"></script>
+    <script src="js/progress.js"></script>
+    <script src="js/gamification.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
