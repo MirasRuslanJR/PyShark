@@ -2,6 +2,7 @@
  * UI.JS
  * User interface rendering and management
  */
+import { exitLesson } from './gamification.js';
 
 class UIManager {
     constructor(progressManager, gamificationManager) {
